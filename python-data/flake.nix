@@ -28,7 +28,7 @@
               # https://devenv.sh/reference/options/
 
               packages = (with pkgs; [ ruff ])
-                ++ (with pkgs.python311Packages; [
+                ++ (with pkgs.python313Packages; [
                   mypy
                   debugpy
                   python-lsp-server
@@ -40,6 +40,7 @@
               languages.python = {
                 enable = true;
                 poetry.enable = true;
+                package = pkgs.python313;
                 poetry.activate.enable = true;
                 poetry.install.enable = true;
               };
