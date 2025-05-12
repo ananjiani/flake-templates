@@ -49,39 +49,6 @@
           pyprojectOverrides
         ]);
     in {
-      packages.x86_64-linux = {
-        default = (pythonSet.mkVirtualEnv "fastapi-run-env"
-          workspace.deps.default).overrideAttrs
-          (old: { venvIgnoreCollisions = [ "*" ]; });
-        docker = let
-          venv = (pythonSet.mkVirtualEnv "fastapi-run-env"
-            workspace.deps.default).overrideAttrs
-            (old: { venvIgnoreCollisions = [ "*" ]; });
-        in pkgs.dockerTools.buildLayeredImage {
-          name = "spatial-jobs-index-api";
-          tag = "latest";
-          contents = [ venv pkgs.bash pkgs.coreutils ];
-          config = {
-            Cmd = [
-              "${venv}/bin/uvicorn"
-              "app.main:app"
-              "--host"
-              "0.0.0.0"
-              "--port"
-              "8000"
-            ];
-            WorkingDir = "/app";
-            ExposedPorts = { "8000/tcp" = { }; };
-            # Entrypoint = [ "${venv}/bin/python" ];
-            # Env = [ "PYTHONPATH=${venv}/lib/python3.13/site-packages" ];
-          };
-        };
-      };
-
-      apps.x86_64-linux.default = {
-        type = "app";
-        program = "./result/bin/fastapi";
-      };
       devShells.x86_64-linux.default = pkgs.mkShell {
         buildInputs = [ python pkgs.ruff pkgs.uv ]
           ++ (with pkgs.python313Packages; [
@@ -97,7 +64,6 @@
         shellHook = ''
           unset PYTHONPATH
         '';
-
       };
 
     };
