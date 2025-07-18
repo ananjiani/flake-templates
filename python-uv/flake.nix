@@ -64,14 +64,29 @@
                 exit 1
             fi
 
-            # Get author info from git
-            AUTHOR_NAME=$(${pkgs.git}/bin/git config user.name 2>/dev/null || echo "Your Name")
-            AUTHOR_EMAIL=$(${pkgs.git}/bin/git config user.email 2>/dev/null || echo "your.email@example.com")
+            # Get author info from git as fallback
+            GIT_NAME=$(${pkgs.git}/bin/git config user.name 2>/dev/null || echo "")
+            GIT_EMAIL=$(${pkgs.git}/bin/git config user.email 2>/dev/null || echo "")
 
-            # Prompt for description
+            # Interactive prompts with git config as fallback
             echo "Project name: $PROJECT_NAME"
-            echo "Author: $AUTHOR_NAME <$AUTHOR_EMAIL>"
             echo
+            if [ -n "$GIT_NAME" ]; then
+                read -p "Author name [$GIT_NAME]: " INPUT_NAME
+                AUTHOR_NAME=''${INPUT_NAME:-$GIT_NAME}
+            else
+                read -p "Author name: " AUTHOR_NAME
+                AUTHOR_NAME=''${AUTHOR_NAME:-"Your Name"}
+            fi
+
+            if [ -n "$GIT_EMAIL" ]; then
+                read -p "Author email [$GIT_EMAIL]: " INPUT_EMAIL
+                AUTHOR_EMAIL=''${INPUT_EMAIL:-$GIT_EMAIL}
+            else
+                read -p "Author email: " AUTHOR_EMAIL
+                AUTHOR_EMAIL=''${AUTHOR_EMAIL:-"your.email@example.com"}
+            fi
+
             read -p "Project description (optional): " DESCRIPTION
             DESCRIPTION=''${DESCRIPTION:-"Add your description here"}
 
@@ -80,11 +95,15 @@
 
             # Initialize git repository if not already initialized
             if [ ! -d ".git" ]; then
+                echo "Initializing git repository..."
                 ${pkgs.git}/bin/git init
+                echo "Adding flake.nix to git..."
+                ${pkgs.git}/bin/git add flake.nix
                 echo "✓ Initialized git repository"
             fi
 
             # Update all files
+            echo "Updating template files with project details..."
             ${pkgs.findutils}/bin/find . -type f -name "*.py" -o -name "*.toml" -o -name "*.md" -o -name "*.nix" -o -name "*.ini" -o -name "justfile" | \
             while read -r file; do
                 if [[ "$file" != *"/.git/"* ]] && [[ "$file" != *"/uv.lock" ]] && [[ "$file" != *"/flake.lock" ]] && [[ "$(basename "$file")" != "setup" ]]; then
@@ -96,17 +115,22 @@
                     ${pkgs.gnused}/bin/sed -i "s/Python project template with modern tooling/$DESCRIPTION/g" "$file"
                 fi
             done
+            echo "✓ Updated template files"
 
             # Rename directory
+            echo "Renaming PROJECT_NAME directory to $PROJECT_NAME..."
             mv PROJECT_NAME "$PROJECT_NAME"
+            echo "✓ Renamed directory"
 
             # Install dependencies
-            echo "Installing dependencies..."
+            echo "Installing Python dependencies..."
             ${pkgs.uv}/bin/uv sync
+            echo "✓ Dependencies installed"
 
             # Install pre-commit hooks
-            echo "Installing pre-commit hooks..."
+            echo "Setting up pre-commit hooks..."
             ${pkgs.pre-commit}/bin/pre-commit install
+            echo "✓ Pre-commit hooks installed"
 
             # Create setup complete marker
             touch .setup-complete
