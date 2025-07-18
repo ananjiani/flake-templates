@@ -41,6 +41,93 @@
           # It's using https://pyproject-nix.github.io/pyproject.nix/build.html
         };
     in {
+      apps = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          setupScript = pkgs.writeScriptBin "setup" ''
+            #!${pkgs.bash}/bin/bash
+            set -euo pipefail
+
+            # Check if already setup
+            if [ ! -d "PROJECT_NAME" ]; then
+                echo "✓ Project already initialized"
+                exit 0
+            fi
+
+            # Get project name from directory
+            PROJECT_DIR=$(basename "$PWD")
+            PROJECT_NAME=$(echo "$PROJECT_DIR" | sed 's/[-.]/_/g' | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
+
+            # Validate project name
+            if [[ ! "$PROJECT_NAME" =~ ^[a-z][a-z0-9_]*$ ]]; then
+                echo "Error: Invalid project name '$PROJECT_NAME'. Must start with a letter and contain only letters, numbers, and underscores."
+                exit 1
+            fi
+
+            # Get author info from git
+            AUTHOR_NAME=$(${pkgs.git}/bin/git config user.name 2>/dev/null || echo "Your Name")
+            AUTHOR_EMAIL=$(${pkgs.git}/bin/git config user.email 2>/dev/null || echo "your.email@example.com")
+
+            # Prompt for description
+            echo "Project name: $PROJECT_NAME"
+            echo "Author: $AUTHOR_NAME <$AUTHOR_EMAIL>"
+            echo
+            read -p "Project description (optional): " DESCRIPTION
+            DESCRIPTION=''${DESCRIPTION:-"Add your description here"}
+
+            echo
+            echo "Setting up project..."
+
+            # Initialize git repository if not already initialized
+            if [ ! -d ".git" ]; then
+                ${pkgs.git}/bin/git init
+                echo "✓ Initialized git repository"
+            fi
+
+            # Update all files
+            ${pkgs.findutils}/bin/find . -type f -name "*.py" -o -name "*.toml" -o -name "*.md" -o -name "*.nix" -o -name "*.ini" -o -name "justfile" | \
+            while read -r file; do
+                if [[ "$file" != *"/.git/"* ]] && [[ "$file" != *"/uv.lock" ]] && [[ "$file" != *"/flake.lock" ]] && [[ "$(basename "$file")" != "setup" ]]; then
+                    ${pkgs.gnused}/bin/sed -i "s/PROJECT_NAME/$PROJECT_NAME/g" "$file"
+                    ${pkgs.gnused}/bin/sed -i "s/Your Name/$AUTHOR_NAME/g" "$file"
+                    ${pkgs.gnused}/bin/sed -i "s/your.email@example.com/$AUTHOR_EMAIL/g" "$file"
+                    ${pkgs.gnused}/bin/sed -i "s/Add your description here/$DESCRIPTION/g" "$file"
+                    # Update flake description
+                    ${pkgs.gnused}/bin/sed -i "s/Python project template with modern tooling/$DESCRIPTION/g" "$file"
+                fi
+            done
+
+            # Rename directory
+            mv PROJECT_NAME "$PROJECT_NAME"
+
+            # Install dependencies
+            echo "Installing dependencies..."
+            ${pkgs.uv}/bin/uv sync
+
+            # Install pre-commit hooks
+            echo "Installing pre-commit hooks..."
+            ${pkgs.pre-commit}/bin/pre-commit install
+
+            # Create setup complete marker
+            touch .setup-complete
+
+            # Success message
+            echo
+            echo "✅ Project '$PROJECT_NAME' initialized successfully!"
+            echo
+            echo "Next steps:"
+            echo "  • Run 'just test' to verify setup"
+            echo "  • Start coding in $PROJECT_NAME/"
+            echo "  • Update README.md with project specifics"
+            echo "  • Run 'just' to see available commands"
+          '';
+        in {
+          setup = {
+            type = "app";
+            program = "${setupScript}/bin/setup";
+          };
+        });
+
       devShells = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
@@ -87,7 +174,7 @@
               if [ -d "PROJECT_NAME" ] && [ ! -f ".setup-complete" ]; then
                 echo "═══════════════════════════════════════════════════════════"
                 echo "🚀 Welcome! This is a fresh Python project template."
-                echo "   Run 'just setup' to initialize your project."
+                echo "   Run 'nix run .#setup' to initialize your project."
                 echo "═══════════════════════════════════════════════════════════"
                 echo ""
               fi
