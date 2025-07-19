@@ -71,7 +71,7 @@ if [[ "$COMMAND" =~ install[[:space:]]+-g ]] || [[ "$COMMAND" =~ install[[:space
 fi
 
 # Check for common file reading patterns that should use Read tool
-if [[ "$COMMAND" =~ ^[[:space:]]*cat[[:space:]]+ ]] && [[ ! "$COMMAND" =~ [|>] ]]; then
+if [[ "$COMMAND" =~ ^[[:space:]]*cat[[:space:]]+ ]] && [[ ! "$COMMAND" =~ [\|\>] ]]; then
     output_json "true" "💡 Tip: Consider using the Read tool instead of 'cat' for better file viewing"
     exit 0
 fi

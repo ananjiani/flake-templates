@@ -160,3 +160,6 @@ uv.lock
 
 # Template setup marker
 .setup-complete
+
+# Serena
+.serena/

@@ -22,7 +22,7 @@ test-fast:
 
 # Run unit tests only
 test-unit:
-    pytest -m unit
+    pytest -m unit -o addopts=""
 
 # Run integration tests only
 test-integration:
@@ -30,7 +30,7 @@ test-integration:
 
 # Lint code
 lint:
-    ruff check PROJECT_NAME tests
+    ruff check PROJECT_NAME tests --fix
     mypy PROJECT_NAME
 
 # Format code

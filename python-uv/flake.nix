@@ -117,6 +117,11 @@
             done
             echo "✓ Updated template files"
 
+            # Make hook scripts executable
+            echo "Making hook scripts executable..."
+            ${pkgs.findutils}/bin/find .claude/hooks -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+            echo "✓ Hook scripts made executable"
+
             # Rename directory
             echo "Renaming PROJECT_NAME directory to $PROJECT_NAME..."
             mv PROJECT_NAME "$PROJECT_NAME"
