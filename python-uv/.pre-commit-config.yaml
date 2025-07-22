@@ -59,4 +59,4 @@ repos:
 
 # Configuration
 default_stages: [pre-commit]
-fail_fast: true
+fail_fast: false
