@@ -24,155 +24,74 @@
   };
 
   outputs =
-    { self, nixpkgs, uv2nix, pyproject-nix, pyproject-build-systems, ... }:
+    {
+      self,
+      nixpkgs,
+      uv2nix,
+      pyproject-nix,
+      pyproject-build-systems,
+      ...
+    }:
     let
       inherit (nixpkgs) lib;
 
       # Support multiple systems
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
       overlay = workspace.mkPyprojectOverlay { sourcePreference = "wheel"; };
-      pyprojectOverrides = _final: _prev:
-        {
-          # Implement build fixups here.
-          # Note that uv2nix is _not_ using Nixpkgs buildPythonPackage.
-          # It's using https://pyproject-nix.github.io/pyproject.nix/build.html
-        };
-    in {
-      apps = forAllSystems (system:
+      pyprojectOverrides = _final: _prev: {
+        # Implement build fixups here.
+        # Note that uv2nix is _not_ using Nixpkgs buildPythonPackage.
+        # It's using https://pyproject-nix.github.io/pyproject.nix/build.html
+      };
+    in
+    {
+      apps = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
           setupScript = pkgs.writeScriptBin "setup" ''
             #!${pkgs.bash}/bin/bash
             set -euo pipefail
 
-            # Check if already setup
-            if [ ! -d "PROJECT_NAME" ]; then
-                echo "✓ Project already initialized"
-                exit 0
-            fi
-
-            # Get project name from directory
-            PROJECT_DIR=$(basename "$PWD")
-            PROJECT_NAME=$(echo "$PROJECT_DIR" | sed 's/[-.]/_/g' | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
-
-            # Validate project name
-            if [[ ! "$PROJECT_NAME" =~ ^[a-z][a-z0-9_]*$ ]]; then
-                echo "Error: Invalid project name '$PROJECT_NAME'. Must start with a letter and contain only letters, numbers, and underscores."
-                exit 1
-            fi
-
-            # Get author info from git as fallback
-            GIT_NAME=$(${pkgs.git}/bin/git config user.name 2>/dev/null || echo "")
-            GIT_EMAIL=$(${pkgs.git}/bin/git config user.email 2>/dev/null || echo "")
-
-            # Interactive prompts with git config as fallback
-            echo "Project name: $PROJECT_NAME"
-            echo
-            if [ -n "$GIT_NAME" ]; then
-                read -p "Author name [$GIT_NAME]: " INPUT_NAME
-                AUTHOR_NAME=''${INPUT_NAME:-$GIT_NAME}
-            else
-                read -p "Author name: " AUTHOR_NAME
-                AUTHOR_NAME=''${AUTHOR_NAME:-"Your Name"}
-            fi
-
-            if [ -n "$GIT_EMAIL" ]; then
-                read -p "Author email [$GIT_EMAIL]: " INPUT_EMAIL
-                AUTHOR_EMAIL=''${INPUT_EMAIL:-$GIT_EMAIL}
-            else
-                read -p "Author email: " AUTHOR_EMAIL
-                AUTHOR_EMAIL=''${AUTHOR_EMAIL:-"your.email@example.com"}
-            fi
-
-            read -p "Project description (optional): " DESCRIPTION
-            DESCRIPTION=''${DESCRIPTION:-"Add your description here"}
-
-            echo
-            echo "Setting up project..."
-
-            # Initialize git repository if not already initialized
-            if [ ! -d ".git" ]; then
-                echo "Initializing git repository..."
-                ${pkgs.git}/bin/git init
-                echo "Adding flake.nix to git..."
-                ${pkgs.git}/bin/git add flake.nix
-                echo "✓ Initialized git repository"
-            fi
-
-            # Update all files
-            echo "Updating template files with project details..."
-            ${pkgs.findutils}/bin/find . -type f -name "*.py" -o -name "*.toml" -o -name "*.md" -o -name "*.nix" -o -name "*.ini" -o -name "justfile" | \
-            while read -r file; do
-                if [[ "$file" != *"/.git/"* ]] && [[ "$file" != *"/uv.lock" ]] && [[ "$file" != *"/flake.lock" ]] && [[ "$(basename "$file")" != "setup" ]]; then
-                    ${pkgs.gnused}/bin/sed -i "s/PROJECT_NAME/$PROJECT_NAME/g" "$file"
-                    ${pkgs.gnused}/bin/sed -i "s/Your Name/$AUTHOR_NAME/g" "$file"
-                    ${pkgs.gnused}/bin/sed -i "s/your.email@example.com/$AUTHOR_EMAIL/g" "$file"
-                    ${pkgs.gnused}/bin/sed -i "s/Add your description here/$DESCRIPTION/g" "$file"
-                    # Update flake description
-                    ${pkgs.gnused}/bin/sed -i "s/Python project template with modern tooling/$DESCRIPTION/g" "$file"
-                fi
-            done
-            echo "✓ Updated template files"
-
             # Make hook scripts executable
             echo "Making hook scripts executable..."
             ${pkgs.findutils}/bin/find .claude/hooks -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
             echo "✓ Hook scripts made executable"
-
-            # Rename directory
-            echo "Renaming PROJECT_NAME directory to $PROJECT_NAME..."
-            mv PROJECT_NAME "$PROJECT_NAME"
-            echo "✓ Renamed directory"
-
-            # Install dependencies
-            echo "Installing Python dependencies..."
-            ${pkgs.uv}/bin/uv sync
-            echo "✓ Dependencies installed"
 
             # Install pre-commit hooks
             echo "Setting up pre-commit hooks..."
             ${pkgs.pre-commit}/bin/pre-commit install
             echo "✓ Pre-commit hooks installed"
 
-            # Create setup complete marker
-            touch .setup-complete
-
             # Success message
             echo
-            echo "✅ Project '$PROJECT_NAME' initialized successfully!"
+            echo "✅ Project initialized successfully!"
             echo
-            echo "Next steps:"
-            echo "  • Run 'just test' to verify setup"
-            echo "  • Start coding in $PROJECT_NAME/"
-            echo "  • Update README.md with project specifics"
-            echo "  • Run 'just' to see available commands"
           '';
-        in {
+        in
+        {
           setup = {
             type = "app";
             program = "${setupScript}/bin/setup";
           };
-        });
+        }
+      );
 
-      devShells = forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
           python = pkgs.python313;
-
-          # Construct package set
-          pythonSet =
-            # Use base package set from pyproject.nix builders
-            (pkgs.callPackage pyproject-nix.build.packages {
-              inherit python;
-            }).overrideScope (lib.composeManyExtensions [
-              pyproject-build-systems.overlays.default
-              overlay
-              pyprojectOverrides
-            ]);
-        in {
+        in
+        {
           default = pkgs.mkShell {
             buildInputs = [
               # Python and package management
@@ -181,9 +100,6 @@
 
               # Development tools
               pkgs.ruff
-              pkgs.just
-              pkgs.watchexec
-              pkgs.git
               pkgs.pre-commit
             ]
             ++ (with pkgs.python313Packages; [
@@ -200,31 +116,37 @@
 
             shellHook = ''
               # Check if this is a fresh template
-              if [ -d "PROJECT_NAME" ] && [ ! -f ".setup-complete" ]; then
+              if [ ! -f "pyproject.toml" ]; then
                 echo "═══════════════════════════════════════════════════════════"
-                echo "🚀 Welcome! This is a fresh Python project template."
-                echo "   Run 'nix run .#setup' to initialize your project."
+                echo "🚀 Welcome! This is a fresh Python project."
+                echo "   Run 'uv init' then 'nix run .#setup' to initialize your project."
                 echo "═══════════════════════════════════════════════════════════"
                 echo ""
               fi
 
               echo "🐍 Python Development Environment"
               echo "Python: ${python.version}"
-              echo ""
-              echo "Available commands:"
-              echo "  just          - Show available development tasks"
-              echo "  just install  - Install Python dependencies"
-              echo "  just test     - Run tests"
-              echo "  just lint     - Run linters"
-              echo "  just check    - Run all checks"
-              echo ""
-              echo ""
 
               # Set up environment
               unset PYTHONPATH
               export PYTHONPATH="$PWD:$PYTHONPATH"
+              
+              # Python virtual environment setup
+              if [[ ! -d .venv ]]; then
+                echo "Creating Python virtual environment..."
+                uv venv
+                uv sync
+              else
+                source .venv/bin/activate
+                # Only sync if pyproject.toml is newer than .venv
+                if [[ pyproject.toml -nt .venv ]]; then
+                  echo "Dependencies may have changed, running uv sync..."
+                  uv sync
+                fi
+              fi
             '';
           };
-        });
+        }
+      );
     };
 }

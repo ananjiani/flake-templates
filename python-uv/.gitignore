@@ -150,16 +150,9 @@ uv.lock
 
 # direnv
 .direnv/
-.envrc
 
 # macOS
 .DS_Store
-
-# pre-commit
-.pre-commit-config.yaml.lock
-
-# Template setup marker
-.setup-complete
 
 # Serena
 .serena/

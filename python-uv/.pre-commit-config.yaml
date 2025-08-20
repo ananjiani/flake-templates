@@ -46,17 +46,6 @@ repos:
         pass_filenames: false
         require_serial: true
 
-  # Fast unit tests
-  - repo: local
-    hooks:
-      - id: unit-tests
-        name: Unit Tests (fast)
-        entry: just test-unit
-        language: system
-        files: \.py$
-        pass_filenames: false
-        require_serial: true
-
 # Configuration
 default_stages: [pre-commit]
 fail_fast: false
