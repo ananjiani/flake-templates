@@ -21,6 +21,11 @@
       inputs.uv2nix.follows = "uv2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    git-hooks = {
+      url = "github:cachix/git-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -30,6 +35,7 @@
       uv2nix,
       pyproject-nix,
       pyproject-build-systems,
+      git-hooks,
       ...
     }:
     let
@@ -53,6 +59,47 @@
       };
     in
     {
+      # Pre-commit hooks configuration
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          pre-commit-check = git-hooks.lib.${system}.run {
+            src = ./.;
+            hooks = {
+              # Python formatters and linters
+              ruff = {
+                enable = true;
+                # Linting with auto-fix
+              };
+              ruff-format = {
+                enable = true;
+                # Formatting
+              };
+              mypy = {
+                enable = true;
+                # Type checking
+              };
+
+              # General file hygiene
+              trim-trailing-whitespace.enable = true;
+              end-of-file-fixer.enable = true;
+              check-merge-conflicts.enable = true;
+              check-added-large-files = {
+                enable = true;
+                args = [ "--maxkb=5000" ];
+              };
+              check-yaml.enable = true;
+              check-json.enable = true;
+              check-toml.enable = true;
+              check-python.enable = true; # Check Python AST
+            };
+          };
+        }
+      );
+
       apps = forAllSystems (
         system:
         let
@@ -66,14 +113,14 @@
             ${pkgs.findutils}/bin/find .claude/hooks -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
             echo "✓ Hook scripts made executable"
 
-            # Install pre-commit hooks
-            echo "Setting up pre-commit hooks..."
-            ${pkgs.pre-commit}/bin/pre-commit install
-            echo "✓ Pre-commit hooks installed"
+            # Note: Pre-commit hooks are automatically installed via git-hooks.nix
+            # when entering the development shell
 
             # Success message
             echo
             echo "✅ Project initialized successfully!"
+            echo
+            echo "Note: Pre-commit hooks are automatically configured when you enter the dev shell."
             echo
           '';
         in
@@ -100,14 +147,15 @@
 
               # Development tools
               pkgs.ruff
-              pkgs.pre-commit
             ]
             ++ (with pkgs.python313Packages; [
               mypy
               python-lsp-server
               python-lsp-ruff
               pylsp-mypy
-            ]);
+            ])
+            # Add pre-commit enabled packages
+            ++ self.checks.${system}.pre-commit-check.enabledPackages;
 
             env = {
               UV_PYTHON_DOWNLOADS = "never";
@@ -115,6 +163,9 @@
             };
 
             shellHook = ''
+              # Run the pre-commit shellHook first
+              ${self.checks.${system}.pre-commit-check.shellHook}
+
               # Check if this is a fresh template
               if [ ! -f "pyproject.toml" ]; then
                 echo "═══════════════════════════════════════════════════════════"
@@ -130,7 +181,7 @@
               # Set up environment
               unset PYTHONPATH
               export PYTHONPATH="$PWD:$PYTHONPATH"
-              
+
               # Python virtual environment setup
               if [[ ! -d .venv ]]; then
                 echo "Creating Python virtual environment..."
