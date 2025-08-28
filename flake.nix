@@ -56,7 +56,7 @@
                 check-json.enable = true;
                 check-toml.enable = true;
                 flake-checker.enable = true;
-                # nix-fmt-rfc-style.enable = true;
+                nixfmt-rfc-style.enable = true;
                 deadnix = {
                   enable = true;
                   settings.edit = true;
