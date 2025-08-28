@@ -19,9 +19,9 @@
 
       flake = {
         templates = {
-          python-uv = {
-            path = ./python-uv;
-            description = "Boilerplate for python uv projects";
+          python = {
+            path = ./templates/python;
+            description = "Boilerplate for python projects";
           };
         };
       };
