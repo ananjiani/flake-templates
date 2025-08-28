@@ -10,13 +10,11 @@
     };
   };
 
-  outputs = inputs@{ flake-parts, ... }:
+  outputs =
+    inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
+      imports = [
+        inputs.git-hooks.flakeModule
       ];
 
       flake = {
@@ -28,36 +26,47 @@
         };
       };
 
-      perSystem = { config, pkgs, system, ... }: {
-        checks = {
-          pre-commit-check = inputs.git-hooks.lib.${system}.run {
-            src = ./.;
-            hooks = {
-              # General file hygiene
-              trim-trailing-whitespace.enable = true;
-              end-of-file-fixer.enable = true;
-              check-merge-conflicts.enable = true;
-              check-added-large-files = {
-                enable = true;
-                args = [ "--maxkb=5000" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+
+      perSystem =
+        {
+          config,
+          ...
+        }:
+        {
+          pre-commit = {
+            check.enable = true;
+            settings = {
+              enable = true;
+              hooks = {
+                # General file hygiene
+                trim-trailing-whitespace.enable = true;
+                end-of-file-fixer.enable = true;
+                check-merge-conflicts.enable = true;
+                check-added-large-files = {
+                  enable = true;
+                  args = [ "--maxkb=5000" ];
+                };
+                check-yaml.enable = true;
+                check-json.enable = true;
+                check-toml.enable = true;
+                flake-checker.enable = true;
+                # nix-fmt-rfc-style.enable = true;
+                deadnix = {
+                  enable = true;
+                  settings.edit = true;
+                };
+                statix.enable = true;
               };
-              check-yaml.enable = true;
-              check-json.enable = true;
-              check-toml.enable = true;
-              flake-checker.enable = true;
-              # nix-fmt-rfc-style.enable = true;
-              deadnix.enable = true;
-              statix.enable = true;
             };
           };
+          devShells.default = config.pre-commit.devShell;
         };
 
-        devShells = {
-          default = pkgs.mkShell {
-            inherit (config.checks.pre-commit-check) shellHook;
-            buildInputs = config.checks.pre-commit-check.enabledPackages;
-          };
-        };
-      };
     };
 }
