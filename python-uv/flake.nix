@@ -3,25 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-
-    pyproject-nix = {
-      url = "github:pyproject-nix/pyproject.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    uv2nix = {
-      url = "github:pyproject-nix/uv2nix";
-      inputs.pyproject-nix.follows = "pyproject-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    pyproject-build-systems = {
-      url = "github:pyproject-nix/build-system-pkgs";
-      inputs.pyproject-nix.follows = "pyproject-nix";
-      inputs.uv2nix.follows = "uv2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     git-hooks = {
       url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -32,14 +13,10 @@
     {
       self,
       nixpkgs,
-      uv2nix,
-      pyproject-nix,
-      pyproject-build-systems,
       git-hooks,
       ...
     }:
     let
-      inherit (nixpkgs) lib;
 
       # Support multiple systems
       supportedSystems = [
@@ -49,56 +26,42 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-
-      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
-      overlay = workspace.mkPyprojectOverlay { sourcePreference = "wheel"; };
-      pyprojectOverrides = _final: _prev: {
-        # Implement build fixups here.
-        # Note that uv2nix is _not_ using Nixpkgs buildPythonPackage.
-        # It's using https://pyproject-nix.github.io/pyproject.nix/build.html
-      };
     in
     {
       # Pre-commit hooks configuration
-      checks = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          pre-commit-check = git-hooks.lib.${system}.run {
-            src = ./.;
-            hooks = {
-              # Python formatters and linters
-              ruff = {
-                enable = true;
-                # Linting with auto-fix
-              };
-              ruff-format = {
-                enable = true;
-                # Formatting
-              };
-              mypy = {
-                enable = true;
-                # Type checking
-              };
-
-              # General file hygiene
-              trim-trailing-whitespace.enable = true;
-              end-of-file-fixer.enable = true;
-              check-merge-conflicts.enable = true;
-              check-added-large-files = {
-                enable = true;
-                args = [ "--maxkb=5000" ];
-              };
-              check-yaml.enable = true;
-              check-json.enable = true;
-              check-toml.enable = true;
-              check-python.enable = true; # Check Python AST
+      checks = forAllSystems (system: {
+        pre-commit-check = git-hooks.lib.${system}.run {
+          src = ./.;
+          hooks = {
+            # Python formatters and linters
+            ruff = {
+              enable = true;
+              # Linting with auto-fix
             };
+            ruff-format = {
+              enable = true;
+              # Formatting
+            };
+            mypy = {
+              enable = true;
+              # Type checking
+            };
+
+            # General file hygiene
+            trim-trailing-whitespace.enable = true;
+            end-of-file-fixer.enable = true;
+            check-merge-conflicts.enable = true;
+            check-added-large-files = {
+              enable = true;
+              args = [ "--maxkb=5000" ];
+            };
+            check-yaml.enable = true;
+            check-json.enable = true;
+            check-toml.enable = true;
+            check-python.enable = true; # Check Python AST
           };
-        }
-      );
+        };
+      });
 
       apps = forAllSystems (
         system:
