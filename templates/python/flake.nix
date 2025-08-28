@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
     git-hooks = {
       url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -10,63 +11,27 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      git-hooks,
-      ...
-    }:
-    let
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.git-hooks.flakeModule
+      ];
 
-      # Support multiple systems
-      supportedSystems = [
+      systems = [
         "x86_64-linux"
         "aarch64-linux"
         "x86_64-darwin"
         "aarch64-darwin"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-    in
-    {
-      # Pre-commit hooks configuration
-      checks = forAllSystems (system: {
-        pre-commit-check = git-hooks.lib.${system}.run {
-          src = ./.;
-          hooks = {
-            # Python formatters and linters
-            ruff = {
-              enable = true;
-              # Linting with auto-fix
-            };
-            ruff-format = {
-              enable = true;
-              # Formatting
-            };
-            mypy = {
-              enable = true;
-              # Type checking
-            };
 
-            # General file hygiene
-            trim-trailing-whitespace.enable = true;
-            end-of-file-fixer.enable = true;
-            check-merge-conflicts.enable = true;
-            check-added-large-files = {
-              enable = true;
-              args = [ "--maxkb=5000" ];
-            };
-            check-yaml.enable = true;
-            check-json.enable = true;
-            check-toml.enable = true;
-            check-python.enable = true; # Check Python AST
-          };
-        };
-      });
-
-      apps = forAllSystems (
-        system:
+      perSystem =
+        {
+          config,
+          pkgs,
+          ...
+        }:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
+          python = pkgs.python313;
           setupScript = pkgs.writeScriptBin "setup" ''
             #!${pkgs.bash}/bin/bash
             set -euo pipefail
@@ -88,37 +53,61 @@
           '';
         in
         {
-          setup = {
-            type = "app";
-            program = "${setupScript}/bin/setup";
-          };
-        }
-      );
+          # Pre-commit hooks configuration
+          pre-commit = {
+            check.enable = true;
+            settings = {
+              hooks = {
+                # Python formatters, linters, and typecheckers
+                ruff.enable = true;
+                ruff-format.enable = true;
+                mypy.enable = true;
 
-      devShells = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          python = pkgs.python313;
-        in
-        {
-          default = pkgs.mkShell {
+                # General file hygiene
+                trim-trailing-whitespace.enable = true;
+                end-of-file-fixer.enable = true;
+                check-merge-conflicts.enable = true;
+                check-added-large-files = {
+                  enable = true;
+                  args = [ "--maxkb=5000" ];
+                };
+                check-yaml.enable = true;
+                check-json.enable = true;
+                check-toml.enable = true;
+                check-python.enable = true; # Check Python AST
+
+                # Nix
+                flake-checker.enable = true;
+                nixfmt-rfc-style.enable = true;
+                deadnix = {
+                  enable = true;
+                  settings.edit = true;
+                };
+                statix.enable = true;
+              };
+            };
+          };
+
+          apps = {
+            setup = {
+              type = "app";
+              program = "${setupScript}/bin/setup";
+            };
+          };
+
+          devShells.default = pkgs.mkShell {
             buildInputs = [
               # Python and package management
               python
               pkgs.uv
-
-              # Development tools
-              pkgs.ruff
             ]
             ++ (with pkgs.python313Packages; [
-              mypy
               python-lsp-server
               python-lsp-ruff
               pylsp-mypy
             ])
             # Add pre-commit enabled packages
-            ++ self.checks.${system}.pre-commit-check.enabledPackages;
+            ++ config.pre-commit.settings.enabledPackages;
 
             env = {
               UV_PYTHON_DOWNLOADS = "never";
@@ -127,7 +116,7 @@
 
             shellHook = ''
               # Run the pre-commit shellHook first
-              ${self.checks.${system}.pre-commit-check.shellHook}
+              ${config.pre-commit.installationScript}
 
               # Check if this is a fresh template
               if [ ! -f "pyproject.toml" ]; then
@@ -160,7 +149,7 @@
               fi
             '';
           };
-        }
-      );
+
+        };
     };
 }
