@@ -21,9 +21,7 @@
         "git+https://github.com/oraios/serena",
         "serena-mcp-server",
         "--context",
-        "agent",
-        "--project",
-        "/home/ammar/Documents/projects/flake-templates/python-uv"
+        "agent"
       ],
       "env": {}
     }
