@@ -167,8 +167,13 @@
                 pkgs.uv
                 ruler-pkg
                 tdd-guard-pkg
+
+                # System libraries for numpy/pandas
+                pkgs.stdenv.cc.cc.lib
+                pkgs.zlib
               ]
               ++ (with pkgs.python313Packages; [
+                debugpy
                 python-lsp-server
                 python-lsp-ruff
                 pylsp-mypy
@@ -200,6 +205,9 @@
                 # Set up environment
                 unset PYTHONPATH
                 export PYTHONPATH="$PWD:$PYTHONPATH"
+
+                # Set LD_LIBRARY_PATH for numpy and other C extensions
+                export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:$LD_LIBRARY_PATH"
 
                 # Python virtual environment setup
                 if [[ ! -d .venv ]]; then
