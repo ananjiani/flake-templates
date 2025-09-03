@@ -44,6 +44,23 @@
             #!${pkgs.bash}/bin/bash
             set -euo pipefail
 
+            # Initialize project with uv first
+            echo "Initializing project with uv..."
+            uv init
+
+            # Extract project name from pyproject.toml and add to .serena/project.yml
+            if [ -f pyproject.toml ] && [ -f .serena/project.yml ]; then
+              PROJECT_NAME=$(grep '^name = ' pyproject.toml | sed 's/name = "\(.*\)"/\1/')
+              if [ ! -z "$PROJECT_NAME" ]; then
+                echo "Setting project name in Serena config: $PROJECT_NAME"
+                # Add project_name at the end of the file
+                echo "" >> .serena/project.yml
+                echo "# Project name from uv init" >> .serena/project.yml
+                echo "project_name: $PROJECT_NAME" >> .serena/project.yml
+                echo "✓ Added project name to .serena/project.yml"
+              fi
+            fi
+
             # Make hook scripts executable
             echo "Making hook scripts executable..."
             ${pkgs.findutils}/bin/find .claude/hooks -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
@@ -64,8 +81,18 @@
               echo "✓ Created .gitignore with .env"
             fi
 
-            echo "Initializing project with uv..."
-            uv init
+            # Extract project name from pyproject.toml and add to .serena/project.yml
+            if [ -f pyproject.toml ] && [ -f .serena/project.yml ]; then
+              PROJECT_NAME=$(grep '^name = ' pyproject.toml | sed 's/name = "\(.*\)"/\1/')
+              if [ ! -z "$PROJECT_NAME" ]; then
+                echo "Setting project name in Serena config: $PROJECT_NAME"
+                # Add project_name at the end of the file
+                echo "" >> .serena/project.yml
+                echo "# Project name from uv init" >> .serena/project.yml
+                echo "project_name: $PROJECT_NAME" >> .serena/project.yml
+                echo "✓ Added project name to .serena/project.yml"
+              fi
+            fi
           '';
         in
         {
