@@ -104,7 +104,10 @@
                 # Python formatters, linters, and typecheckers
                 ruff.enable = true;
                 ruff-format.enable = true;
-                mypy.enable = true;
+                mypy = {
+                  enable = true;
+                  entry = "${pkgs.uv}/bin/uv run mypy";
+                };
 
                 # General file hygiene
                 trim-trailing-whitespace.enable = true;
