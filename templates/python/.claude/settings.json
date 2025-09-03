@@ -29,7 +29,14 @@
       "mcp__serena__insert_before_symbol",
       "mcp__serena__delete_lines"
     ],
-    "deny": []
+    "deny": [
+      "Read(.claude/tdd-guard/**)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(perl:*)"
+    ]
   },
   "hooks": {
     "PreToolUse": [
