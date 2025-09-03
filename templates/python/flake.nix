@@ -8,6 +8,10 @@
       url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    ruler = {
+      url = "github:intellectronica/ruler";
+      flake = false;
+    };
   };
 
   outputs =
@@ -88,60 +92,81 @@
             };
           };
 
-          devShells.default = pkgs.mkShell {
-            buildInputs = [
-              # Python and package management
-              python
-              pkgs.uv
-            ]
-            ++ (with pkgs.python313Packages; [
-              python-lsp-server
-              python-lsp-ruff
-              pylsp-mypy
-            ])
-            # Add pre-commit enabled packages
-            ++ config.pre-commit.settings.enabledPackages;
+          devShells.default =
+            let
+              # Build ruler CLI tool (auto-updating from flake input)
+              ruler-pkg = pkgs.buildNpmPackage {
+                pname = "ruler";
+                version = "latest";
 
-            env = {
-              UV_PYTHON_DOWNLOADS = "never";
-              UV_PYTHON = python.interpreter;
-            };
+                src = inputs.ruler;
 
-            shellHook = ''
-              # Run the pre-commit shellHook first
-              ${config.pre-commit.installationScript}
+                npmDepsHash = "sha256-XRcVHK45qBUVXsrHSGS88aJ8XMRR+5eQ+jgwBEmgnc8=";
 
-              # Check if this is a fresh template
-              if [ ! -f "pyproject.toml" ]; then
-                echo "═══════════════════════════════════════════════════════════"
-                echo "🚀 Welcome! This is a fresh Python project."
-                echo "   Run 'nix run .#setup' to initialize your project."
-                echo "═══════════════════════════════════════════════════════════"
-                echo ""
-              fi
+                # The package has a prepare script that runs the build
+                npmBuildScript = "build";
 
-              echo "🐍 Python Development Environment"
-              echo "Python: ${python.version}"
+                meta = {
+                  description = "Centralise Your AI Coding Assistant Instructions";
+                  homepage = "https://github.com/intellectronica/ruler";
+                };
+              };
+            in
+            pkgs.mkShell {
+              buildInputs = [
+                # Python and package management
+                python
+                pkgs.uv
+                ruler-pkg
+              ]
+              ++ (with pkgs.python313Packages; [
+                python-lsp-server
+                python-lsp-ruff
+                pylsp-mypy
+              ])
+              # Add pre-commit enabled packages
+              ++ config.pre-commit.settings.enabledPackages;
 
-              # Set up environment
-              unset PYTHONPATH
-              export PYTHONPATH="$PWD:$PYTHONPATH"
+              env = {
+                UV_PYTHON_DOWNLOADS = "never";
+                UV_PYTHON = python.interpreter;
+              };
 
-              # Python virtual environment setup
-              if [[ ! -d .venv ]]; then
-                echo "Creating Python virtual environment..."
-                uv venv
-                uv sync
-              else
-                source .venv/bin/activate
-                # Only sync if pyproject.toml is newer than .venv
-                if [[ pyproject.toml -nt .venv ]]; then
-                  echo "Dependencies may have changed, running uv sync..."
-                  uv sync
+              shellHook = ''
+                # Run the pre-commit shellHook first
+                ${config.pre-commit.installationScript}
+
+                # Check if this is a fresh template
+                if [ ! -f "pyproject.toml" ]; then
+                  echo "═══════════════════════════════════════════════════════════"
+                  echo "🚀 Welcome! This is a fresh Python project."
+                  echo "   Run 'nix run .#setup' to initialize your project."
+                  echo "═══════════════════════════════════════════════════════════"
+                  echo ""
                 fi
-              fi
-            '';
-          };
+
+                echo "🐍 Python Development Environment"
+                echo "Python: ${python.version}"
+
+                # Set up environment
+                unset PYTHONPATH
+                export PYTHONPATH="$PWD:$PYTHONPATH"
+
+                # Python virtual environment setup
+                if [[ ! -d .venv ]]; then
+                  echo "Creating Python virtual environment..."
+                  uv venv
+                  uv sync
+                else
+                  source .venv/bin/activate
+                  # Only sync if pyproject.toml is newer than .venv
+                  if [[ pyproject.toml -nt .venv ]]; then
+                    echo "Dependencies may have changed, running uv sync..."
+                    uv sync
+                  fi
+                fi
+              '';
+            };
 
         };
     };

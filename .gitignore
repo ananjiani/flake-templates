@@ -10,3 +10,4 @@ result-*
 
 flake.lock
 .serena
+templates/python/.mcp.json
