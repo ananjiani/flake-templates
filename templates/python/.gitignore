@@ -103,7 +103,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -156,10 +155,6 @@ uv.lock
 
 # macOS
 .DS_Store
-
-# Serena
-.serena/
-
 
 # START Ruler Generated Files
 /.codex/config.json

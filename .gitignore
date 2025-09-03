@@ -9,5 +9,6 @@ result-*
 .pre-commit-config.yaml
 
 flake.lock
-.serena
 templates/python/.mcp.json
+templates/python/.serena/.gitignore
+/.serena

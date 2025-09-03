@@ -49,6 +49,21 @@
             ${pkgs.findutils}/bin/find .claude/hooks -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
             echo "✓ Hook scripts made executable"
 
+            # Add .env to .gitignore if not already present
+            if [ -f .gitignore ]; then
+              if ! grep -q "^\.env$" .gitignore 2>/dev/null; then
+                echo "Adding .env to .gitignore..."
+                echo ".env" >> .gitignore
+                echo "✓ Added .env to .gitignore"
+              else
+                echo "✓ .env already in .gitignore"
+              fi
+            else
+              echo "Creating .gitignore with .env..."
+              echo ".env" > .gitignore
+              echo "✓ Created .gitignore with .env"
+            fi
+
             echo "Initializing project with uv..."
             uv init
           '';
