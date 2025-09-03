@@ -12,6 +12,10 @@
       url = "github:intellectronica/ruler";
       flake = false;
     };
+    tdd-guard = {
+      url = "github:nizos/tdd-guard";
+      flake = false;
+    };
   };
 
   outputs =
@@ -111,6 +115,35 @@
                   homepage = "https://github.com/intellectronica/ruler";
                 };
               };
+
+              # Build tdd-guard CLI tool (auto-updating from flake input)
+              tdd-guard-pkg = pkgs.buildNpmPackage {
+                pname = "tdd-guard";
+                version = "latest";
+
+                src = inputs.tdd-guard;
+
+                npmDepsHash = "sha256-IAL1Puc+BzXVYPp3+7iS9Qgp8yVjkyvjmFW4gkumYVA=";
+
+                # The package has a build script
+                npmBuildScript = "build";
+
+                # Skip the postinstall scripts that try to download native bindings
+                npmFlags = [ "--ignore-scripts" ];
+
+                # Make sure the binary is executable
+                postInstall = ''
+                  chmod +x $out/bin/tdd-guard
+                  # Remove broken symlinks that cause build failure
+                  rm -f $out/lib/node_modules/tdd-guard/node_modules/tdd-guard-vitest
+                  rm -f $out/lib/node_modules/tdd-guard/node_modules/tdd-guard-jest
+                '';
+
+                meta = {
+                  description = "Test-Driven Development Guard for monitoring and running tests";
+                  homepage = "https://github.com/nizos/tdd-guard";
+                };
+              };
             in
             pkgs.mkShell {
               buildInputs = [
@@ -118,6 +151,7 @@
                 python
                 pkgs.uv
                 ruler-pkg
+                tdd-guard-pkg
               ]
               ++ (with pkgs.python313Packages; [
                 python-lsp-server
