@@ -156,6 +156,8 @@ uv.lock
 # macOS
 .DS_Store
 
+.claude/tdd-guard/
+
 # START Ruler Generated Files
 /.codex/config.json
 /.codex/config.json.bak
