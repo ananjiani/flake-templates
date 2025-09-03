@@ -41,15 +41,8 @@
             ${pkgs.findutils}/bin/find .claude/hooks -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
             echo "✓ Hook scripts made executable"
 
-            # Note: Pre-commit hooks are automatically installed via git-hooks.nix
-            # when entering the development shell
-
-            # Success message
-            echo
-            echo "✅ Project initialized successfully!"
-            echo
-            echo "Note: Pre-commit hooks are automatically configured when you enter the dev shell."
-            echo
+            echo "Initializing project with uv..."
+            uv init
           '';
         in
         {
@@ -122,7 +115,7 @@
               if [ ! -f "pyproject.toml" ]; then
                 echo "═══════════════════════════════════════════════════════════"
                 echo "🚀 Welcome! This is a fresh Python project."
-                echo "   Run 'uv init' then 'nix run .#setup' to initialize your project."
+                echo "   Run 'nix run .#setup' to initialize your project."
                 echo "═══════════════════════════════════════════════════════════"
                 echo ""
               fi
