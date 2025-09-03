@@ -59,7 +59,9 @@ args = [
   "git+https://github.com/oraios/serena",
   "serena-mcp-server",
   "--context",
-  "agent"
+  "agent",
+  "--enable-web-dashboard",
+  "false"
 ]
 [mcp_servers.serena.env]
 # Add any environment variables if needed
